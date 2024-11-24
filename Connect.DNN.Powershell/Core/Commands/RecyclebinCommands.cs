@@ -43,7 +43,7 @@ namespace Connect.DNN.Powershell.Core.Commands
         {
             var cmd = string.Format("restore-page");
             cmd += pageId == null ? "" : string.Format(" --id {0}", pageId);
-            cmd += string.IsNullOrEmpty(pageName) ? "" : string.Format(" --pane {0}", pageName);
+            cmd += string.IsNullOrEmpty(pageName) ? "" : string.Format(" --pane \"{0}\"", pageName);
             cmd += parentId == null ? "" : string.Format(" --parentid {0}", parentId);
             var response = DnnPromptController.ProcessCommand(site, portalId, 5, cmd);
             var result = Newtonsoft.Json.JsonConvert.DeserializeObject<ConsoleResultModel<object>>(response.Contents);

@@ -19,7 +19,7 @@ namespace Connect.DNN.Powershell.Core.Commands
         {
             var cmd = string.Format("list-tasks");
             cmd += enabled == null ? "" : string.Format(" --enabled {0}", enabled);
-            cmd += string.IsNullOrEmpty(taskName) ? "" : string.Format(" --name {0}", taskName);
+            cmd += string.IsNullOrEmpty(taskName) ? "" : string.Format(" --name \"{0}\"", taskName);
             var response = DnnPromptController.ProcessCommand(site, portalId, 5, cmd);
             var result = Newtonsoft.Json.JsonConvert.DeserializeObject<ConsoleResultModel<TaskModelBase>>(response.Contents);
             result.AssertValidConsoleResponse();
