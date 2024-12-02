@@ -183,5 +183,74 @@ namespace Connect.DNN.Powershell.Framework
                 }
             }
         }
+
+        public static ServerResponse ProcessApi(Site site, int retry, int tabId, int moduleId, string moduleName, string controller, string action, string httpMethod, string payload)
+        {
+            var res = new ServerResponse();
+            if (retry == 0)
+            {
+                res.Status = ServerResponseStatus.Error;
+                return res;
+            }
+            var token = Newtonsoft.Json.JsonConvert.DeserializeObject<JwtToken>(site.Token.Decrypt());
+            var url = string.Format("{0}/DesktopModules/{1}/API/{2}/{3}", site.Url, moduleName, controller, action);
+            var request = WebRequest.Create(url);
+            request.ContentType = "application/json; charset=utf-8";
+            request.Method = httpMethod;
+            request.Headers.Add("Authorization", "Bearer " + token.accessToken);
+            request.Headers.Add("Tabid", tabId.ToString());
+            request.Headers.Add("Moduleid", moduleId.ToString());
+            if (httpMethod == WebRequestMethods.Http.Post)
+            {
+                using (var streamWriter = new StreamWriter(request.GetRequestStream()))
+                {
+                    //string json = Newtonsoft.Json.JsonConvert.SerializeObject(payload);
+                    string json = payload;
+                    streamWriter.Write(json);
+                    streamWriter.Flush();
+                    streamWriter.Close();
+                }
+            }
+            try
+            {
+                var response = (HttpWebResponse)request.GetResponse();
+                using (var sr = new StreamReader(response.GetResponseStream()))
+                {
+                    res.Contents = sr.ReadToEnd();
+                }
+                return res;
+            }
+            catch (WebException ex)
+            {
+                switch (((HttpWebResponse)ex.Response).StatusCode)
+                {
+                    case HttpStatusCode.Unauthorized:
+                        var renew = RenewToken(site);
+                        if (renew.Status != ServerResponseStatus.Success)
+                        {
+                            res.Status = renew.Status;
+                            return res;
+                        }
+                        site.Token = renew.Contents.Encrypt();
+                        var sites = SiteList.Instance();
+                        var listKey = "";
+                        foreach (var s in sites.Sites)
+                        {
+                            if (s.Value.Url == site.Url)
+                            {
+                                listKey = s.Key;
+                            }
+                        }
+                        if (!string.IsNullOrEmpty(listKey))
+                        {
+                            sites.SetSite(listKey, site.Url, renew.Contents);
+                        }
+                        return ProcessApi(site, retry - 1, tabId, moduleId, moduleName, controller, action, httpMethod, payload);
+                    default:
+                        res.Status = ServerResponseStatus.Error;
+                        return res;
+                }
+            }
+        }
     }
 }
